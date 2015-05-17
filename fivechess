@@ -1,0 +1,915 @@
+package com.langxi.five_chess;
+
+import java.awt.BorderLayout;
+import java.awt.Button;
+import java.awt.Canvas;
+import java.awt.CheckboxMenuItem;
+import java.awt.Color;
+import java.awt.Dialog;
+import java.awt.Dimension;
+import java.awt.FlowLayout;
+import java.awt.Font;
+import java.awt.Frame;
+import java.awt.Graphics;
+import java.awt.GridLayout;
+import java.awt.Image;
+import java.awt.Label;
+import java.awt.List;
+import java.awt.Menu;
+import java.awt.MenuBar;
+import java.awt.MenuItem;
+import java.awt.Panel;
+import java.awt.TextArea;
+import java.awt.TextField;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.ItemEvent;
+import java.awt.event.ItemListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.Map;
+import java.util.Observer;
+import java.util.TreeMap;
+
+import javax.imageio.ImageIO;
+import javax.swing.BoxLayout;
+import javax.swing.JPanel;
+import javax.swing.Timer;
+
+public class FiveChess extends Frame {
+
+	// 棋子的数量
+	public final static int num = 10;
+	// 设置棋盘的像素大小
+	private int board_width = 720;
+	private int board_height = 720;
+	// 设置棋子的大小
+	private int chess_size = 40;
+	// 横向能放多少个棋子
+	private int count_x = board_width / chess_size;
+	// 纵向上能放多少个棋子
+	private int count_y = board_height / chess_size;
+	// 将棋盘定义为一个二维数组
+	private String[][] table = new String[count_x][count_y];
+	// 用0代表白棋 1代表黑棋
+	private String white_chess = "0";
+	private String black_chess = "1";
+	// 棋子的偏移量
+	private int offset = chess_size / 2;
+	// 当前选中点的坐标
+	private int selectedx = -1;
+	private int selectedy = -1;
+	// 记录是白棋还是黑棋
+	private int count = 1;
+	// 白棋的数量
+	private int white_count = num;
+	// 黑棋的数量
+	private int black_count = num;
+	// 棋盘
+	private BufferedImage board_image = new BufferedImage(board_width,
+			board_height, BufferedImage.TYPE_INT_RGB);
+	private Graphics grap = board_image.getGraphics();
+
+	// 判断是白棋胜
+	private boolean white_flag = false;
+	// 黑棋胜
+	private boolean black_flag = false;
+	// 胜利的四种形式 one two three four
+	private String winForm = null;
+	// 点击数组的坐标
+	private int x_pos = 0;
+	private int y_pos = 0;
+	// 用来记录棋盘上的棋子
+	private Map<Integer, Integer> map = new TreeMap<Integer, Integer>();
+	// 对战模式 pp--人人对战 pc--人机对战 lo--地方游戏
+	// 默认为人机对战
+	private boolean type = true;
+	// 用来存放白棋，白棋移动
+	private ArrayList<Integer> list_w = new ArrayList<Integer>();
+	// 用来存放黑棋，黑棋移动
+	private ArrayList<Integer> list_b = new ArrayList<Integer>();
+	// 棋子胜点的坐标
+	private int locate = 0;
+	// 在棋盘上显示当地时间 格式化日期
+	private SimpleDateFormat format = new SimpleDateFormat();
+	// 让时间动起来 创建一个Timer
+	private Timer timer = null;
+	// 吃对方的棋
+	private boolean change_white = false;
+	private boolean change_black = false;
+	// 地方游戏中胜利的控制
+	private boolean b_w = false;
+	private boolean w_w = false;
+	// 默认为先手
+	private boolean prior = true;
+
+	class MyCanvas extends Canvas {
+		@Override
+		public void paint(Graphics g) {
+			g.drawImage(board_image, 0, 0, null);
+			for (int i = 0; i < count_x; i++) {
+				for (int j = 0; j < count_y; j++) {
+					if (!(i == 0 || j == 0 || i == table.length || j == table.length)) {
+						if (table[i][j] == "1") {
+							g.setColor(Color.BLACK);
+							g.fillOval(i * chess_size - offset, j * chess_size
+									- offset, chess_size, chess_size);
+						}
+						if (table[i][j] == "0") {
+							g.setColor(Color.WHITE);
+							g.fillOval(i * chess_size - offset, j * chess_size
+									- offset, chess_size, chess_size);
+						}
+
+					}
+				}
+			}
+		}
+
+		// 判断胜利
+		private void win() {
+			for (int i = 0; i < table.length; i++) {
+				for (int j = 0; j < table[i].length; j++) {
+					if (table[i][j] == "0") {
+						if (table[i][j + 1] == "0" && table[i][j + 2] == "0"
+								&& table[i][j + 3] == "0"
+								&& table[i][j + 4] == "0") {
+							locate = i * count_x + j;
+							winForm = "one";
+							white_flag = true;
+						} else if ((table[i + 1][j + 1] == "0"
+								&& table[i + 2][j + 2] == "0"
+								&& table[i + 3][j + 3] == "0" && table[i + 4][j + 4] == "0")) {
+							locate = i * count_x + j;
+							winForm = "two";
+							white_flag = true;
+						} else if (table[i + 1][j] == "0"
+								&& table[i + 2][j] == "0"
+								&& table[i + 3][j] == "0"
+								&& table[i + 4][j] == "0") {
+							locate = i * count_x + j;
+							winForm = "three";
+							white_flag = true;
+						} else if (table[i - 1][j + 1] == "0"
+								&& table[i - 2][j + 2] == "0"
+								&& table[i - 3][j + 3] == "0"
+								&& table[i - 4][j + 4] == "0") {
+							locate = i * count_x + j;
+							winForm = "four";
+							white_flag = true;
+						}
+					}
+					if (table[i][j] == "1") {
+						if (table[i][j + 1] == "1" && table[i][j + 2] == "1"
+								&& table[i][j + 3] == "1"
+								&& table[i][j + 4] == "1") {
+							winForm = "one";
+							locate = i * count_x + j;
+							black_flag = true;
+						} else if ((table[i + 1][j + 1] == "1"
+								&& table[i + 2][j + 2] == "1"
+								&& table[i + 3][j + 3] == "1" && table[i + 4][j + 4] == "1")) {
+							winForm = "two";
+							locate = i * count_x + j;
+							black_flag = true;
+						} else if (table[i + 1][j] == "1"
+								&& table[i + 2][j] == "1"
+								&& table[i + 3][j] == "1"
+								&& table[i + 4][j] == "1") {
+							winForm = "three";
+							locate = i * count_x + j;
+							black_flag = true;
+						} else if (table[i - 1][j + 1] == "1"
+								&& table[i - 2][j + 2] == "1"
+								&& table[i - 3][j + 3] == "1"
+								&& table[i - 4][j + 4] == "1") {
+							winForm = "four";
+							locate = i * count_x + j;
+							black_flag = true;
+						}
+					}
+				}
+			}
+		}
+
+		// 地方游戏 判断胜利
+		private void win3() {
+			int num_white = 0;
+			int num_black = 0;
+			for (int i = 0; i < table.length; i++) {
+				for (int j = 0; j < table[0].length; j++) {
+					if (table[i][j] == "0") {
+						num_white++;
+					}
+					if (table[i][j] == "1") {
+						num_black++;
+					}
+				}
+			}
+			if (num_white < 5) {
+				b_w = true;
+			}
+			if (num_black < 5) {
+				w_w = true;
+			}
+
+		}
+	}
+
+	public void run() throws Exception {
+		Frame frame = new Frame("欢乐五子棋");
+		final MyCanvas canvas = new MyCanvas();
+		canvas.setPreferredSize(new Dimension(board_width, board_height));
+		frame.add(canvas, BorderLayout.CENTER);
+		Image img = ImageIO.read(new File("./image/board.png"));
+		grap.drawImage(img, 0, 0, null);
+		this.drawTable();
+
+		// 创建一个面板
+		Panel panel = new Panel();
+		panel.setPreferredSize(new Dimension(300, 720));
+		panel.setLayout(null);
+
+		Font f = new Font("宋体", Font.BOLD, 20);
+
+		Label white = new Label("白棋数量：");
+		white.setFont(f);
+		white.setBounds(50, 50, 100, 50);
+		panel.add(white);
+
+		final TextField white_tf = new TextField();
+		white_tf.setFont(f);
+		white_tf.setBounds(160, 60, 80, 25);
+		white_tf.setText(String.valueOf(white_count));
+		white_tf.setEditable(false);
+		panel.add(white_tf);
+
+		Label black = new Label("黑棋数量：");
+		black.setFont(f);
+		black.setBounds(50, 120, 100, 50);
+		panel.add(black);
+
+		final TextField black_tf = new TextField();
+		black_tf.setFont(f);
+		black_tf.setBounds(160, 130, 80, 25);
+		black_tf.setText(String.valueOf(black_count));
+		black_tf.setEditable(false);
+		panel.add(black_tf);
+
+		// 提示标签 默认黑棋为先手
+		Label info = new Label("黑棋为先手！！");
+		info.setBounds(50, 200, 200, 80);
+		info.setFont(new Font("隶书", Font.BOLD, 30));
+		panel.add(info);
+
+		frame.add(panel, BorderLayout.EAST);
+
+		// 胜利对话框
+		final Dialog win_d = new Dialog(frame, true);
+		win_d.setBounds(30, 30, 150, 120);
+		win_d.setLayout(null);
+		final Label label1 = new Label();
+		label1.setBounds(10, 10, 100, 70);
+		Button btn = new Button("确定");
+		btn.setBounds(60, 90, 40, 20);
+		win_d.add(btn);
+
+		// 菜单项
+		MenuBar bar = new MenuBar();
+		Menu game = new Menu("游戏");
+		MenuItem newGame = new MenuItem("新游戏");
+		MenuItem exit = new MenuItem("退出");
+		game.add(newGame);
+		game.addSeparator();
+		game.add(exit);
+		bar.add(game);
+
+		Menu select = new Menu("选项");
+		MenuItem huiqi = new MenuItem("悔棋");
+		final CheckboxMenuItem first = new CheckboxMenuItem("先手", true);
+		final CheckboxMenuItem last = new CheckboxMenuItem("后手", false);
+		select.add(first);
+		select.addSeparator();
+		select.add(last);
+		select.addSeparator();
+		select.add(huiqi);
+		bar.add(select);
+
+		Menu fire = new Menu("对战模式");
+		final CheckboxMenuItem pToC = new CheckboxMenuItem("人机对战", false);
+		final CheckboxMenuItem pToP = new CheckboxMenuItem("人人对战", true);
+		final CheckboxMenuItem location = new CheckboxMenuItem("地方游戏", false);
+		fire.add(pToC);
+		fire.addSeparator();
+		fire.add(pToP);
+		fire.addSeparator();
+		fire.add(location);
+		bar.add(fire);
+
+		Menu help = new Menu("帮助");
+		MenuItem about = new MenuItem("关于");
+		help.add(about);
+		bar.add(help);
+		frame.setMenuBar(bar);
+
+		final Frame rudef = new Frame("地方游戏的规则");
+		rudef.setBounds(100, 100, 600, 300);
+		rudef.setLayout(null);
+		TextArea info_tf = new TextArea(" ", 20, 6,
+				TextArea.SCROLLBARS_VERTICAL_ONLY);
+		info_tf.setBounds(20, 50, 560, 300);
+		info_tf.setFont(new Font("宋体", Font.BOLD, 30));
+		info_tf.setEditable(false);
+		info_tf.setText("	每方都有一定数量的棋子，当黑方棋子成5个后，"
+				+ "然后将黑房5个棋子收回手里，然后用用黑方的一个棋子代替棋盘上白方的一个棋子。"
+				+ "如果黑方手里没有棋子了，可以移动棋盘上黑方的棋子。" + "直到一方不足5个棋子时，结束。");
+
+		rudef.add(info_tf);
+
+		rudef.addWindowListener(new WindowAdapter() {
+			@Override
+			public void windowClosing(WindowEvent e) {
+				rudef.setVisible(false);
+			}
+		});
+
+		// 显示当地时间
+		Label locateTime = new Label("当地时间：");
+		locateTime.setBounds(50, 300, 100, 50);
+		locateTime.setFont(f);
+		panel.add(locateTime);
+
+		final Label time = new Label();
+		time.setBounds(160, 300, 100, 50);
+		time.setFont(f);
+
+		panel.add(time);
+
+		timer = new Timer(100, new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				// 当地时间
+				Date date = new Date();
+				SimpleDateFormat simple = new SimpleDateFormat("HH:mm:ss");
+				time.setText(simple.format(date));
+			}
+		});
+		timer.start();
+
+		btn.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				win_d.setVisible(false);
+				for (int i = 0; i < table.length; i++) {
+					for (int j = 0; j < table[0].length; j++) {
+						table[i][j] = "+";
+					}
+				}
+				canvas.repaint();
+				map.clear();
+
+				if (prior) {
+					count = 1;
+				} else {
+					count = 2;
+				}
+				white_count = num;
+				black_count = num;
+				white_flag = false;
+				black_flag = false;
+			}
+		});
+
+		// 重新开始监听
+		newGame.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				for (int i = 0; i < table.length; i++) {
+					for (int j = 0; j < table[0].length; j++) {
+						table[i][j] = "+";
+					}
+				}
+				canvas.repaint();
+				count = 1;
+				map.clear();
+				white_count = num;
+				black_count = num;
+				white_flag = false;
+				black_flag = false;
+				first.setState(true);
+				last.setState(false);
+			}
+		});
+
+		// 先手监听
+		first.addItemListener(new ItemListener() {
+
+			@Override
+			public void itemStateChanged(ItemEvent e) {
+				first.setState(true);
+				last.setState(false);
+				count = 1;
+				prior = true;
+			}
+		});
+
+		// 后手监听
+		last.addItemListener(new ItemListener() {
+
+			@Override
+			public void itemStateChanged(ItemEvent e) {
+				first.setState(false);
+				last.setState(true);
+				count = 2;
+				prior = false;
+			}
+		});
+
+		// 悔棋事件监听
+		huiqi.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				this.nudo();
+				canvas.repaint();
+			}
+
+			// 悔棋
+			private void nudo() {
+				// 重新对棋盘初始化
+				for (int i = 0; i < table.length; i++) {
+					for (int j = 0; j < table[0].length; j++) {
+						table[i][j] = "+";
+					}
+				}
+				// 为什么要先减后删除呢？
+				// 因为对棋盘赋值后 count++
+
+				System.out.println(map.size());
+				count--;
+				map.remove(count);
+
+				for (Map.Entry<Integer, Integer> entry : map.entrySet()) {
+					// 白棋
+					if (entry.getKey() % 2 == 0) {
+						x_pos = entry.getValue() / count_x;
+						y_pos = entry.getValue() % count_x;
+						table[x_pos][y_pos] = "0";
+					}
+					// 黑棋
+					if (entry.getKey() % 2 != 0) {
+						x_pos = entry.getValue() / count_x;
+						y_pos = entry.getValue() % count_x;
+						table[x_pos][y_pos] = "1";
+					}
+				}
+			}
+		});
+
+		// 退出事件监听
+		exit.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				timer.stop();
+				System.exit(0);
+			}
+		});
+
+		// 关于
+		about.addActionListener(new ActionListener() {
+
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				rudef.setVisible(true);
+			}
+		});
+
+		// 人机对战 ==============================================================
+		pToC.addItemListener(new ItemListener() {
+			@Override
+			public void itemStateChanged(ItemEvent e) {
+				pToC.setState(true);
+				pToP.setState(false);
+				location.setState(false);
+
+			}
+		});
+
+		// 人人对战 ===========================================================
+		pToP.addItemListener(new ItemListener() {
+			@Override
+			public void itemStateChanged(ItemEvent e) {
+
+				pToC.setState(false);
+				pToP.setState(true);
+				location.setState(false);
+				type = true;
+				// 对棋盘赋值为“+”
+				for (int i = 0; i < table.length; i++) {
+					for (int j = 0; j < table[0].length; j++) {
+						table[i][j] = "+";
+					}
+				}
+				canvas.repaint();
+				map.clear();
+				count = 1;
+				white_count = num;
+				black_count = num;
+				white_tf.setText(String.valueOf(white_count));
+				black_tf.setText(String.valueOf(black_count));
+			}
+		});
+
+		// 地方游戏 ==================================================
+		location.addItemListener(new ItemListener() {
+			@Override
+			public void itemStateChanged(ItemEvent e) {
+
+				pToC.setState(false);
+				pToP.setState(false);
+				location.setState(true);
+				type = false;
+
+				// 对棋盘赋值为“+”
+				for (int i = 0; i < table.length; i++) {
+					for (int j = 0; j < table[0].length; j++) {
+						table[i][j] = "+";
+					}
+				}
+				canvas.repaint();
+				map.clear();
+				count = 1;
+				white_count = num;
+				black_count = num;
+				white_tf.setText(String.valueOf(white_count));
+				black_tf.setText(String.valueOf(black_count));
+			}
+		});
+
+		canvas.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent e) {
+				// 人人
+				if (type) {
+
+					// 点击的数组的坐标
+					x_pos = (int) ((e.getX() + offset) / chess_size);
+					y_pos = (int) ((e.getY() + offset) / chess_size);
+
+					if (count % 2 == 0) {
+						// 白棋
+						if (table[x_pos][y_pos] == "+") {
+							table[x_pos][y_pos] = "0";
+							map.put(count, x_pos * count_x + y_pos);
+							count++;
+							canvas.repaint();
+							canvas.win();
+						}
+					}
+
+					if (count % 2 != 0) {
+						// 黑棋
+						if (table[x_pos][y_pos] == "+") {
+							table[x_pos][y_pos] = "1";
+							map.put(count, x_pos * count_x + y_pos);
+							count++;
+							canvas.repaint();
+							canvas.win();
+						}
+					}
+
+					if (white_flag) {
+						label1.setFont(new Font("宋体", Font.BOLD, 20));
+						label1.setText("  白棋胜！");
+						win_d.add(label1);
+						win_d.setVisible(true);
+						win_d.setModal(true);
+						white_flag = false;
+					}
+					if (black_flag) {
+						label1.setFont(new Font("宋体", Font.BOLD, 20));
+						label1.setText("  黑棋胜！");
+						win_d.add(label1);
+						win_d.setVisible(true);
+						win_d.setModal(true);
+						black_flag = false;
+					}
+				} else {
+
+					// 点击的数组的坐标
+					x_pos = (int) ((e.getX() + offset) / chess_size);
+					y_pos = (int) ((e.getY() + offset) / chess_size);
+
+					if (count % 2 != 0) {
+						if (black_count > 0) {
+							// 黑棋
+							if (table[x_pos][y_pos] == "+") {
+								table[x_pos][y_pos] = "1";
+								map.put(count, x_pos * count_x + y_pos);
+								canvas.repaint();
+								count++;
+								black_count--;
+								black_tf.setText(String.valueOf(black_count));
+							}
+						} else {
+
+							// 棋子移动
+							if (table[x_pos][y_pos] == "1") {
+								list_b.add(x_pos * count_x + y_pos);
+							}
+							// 集合的长度
+							int length = list_b.size();
+							// 对棋子遍历
+							if (length > 0) {
+								if (table[x_pos][y_pos] == "+") {
+									int x = list_b.get(length - 1) / count_x;
+									int y = list_b.get(length - 1) % count_x;
+									if ((x == x_pos && y - 1 == y_pos)
+											|| (x == x_pos && y + 1 == y_pos)
+											|| (x - 1 == x_pos && y == y_pos)
+											|| (x + 1 == x_pos && y == y_pos)) {
+										table[x_pos][y_pos] = "1";
+										table[x][y] = "+";
+										count++;
+										canvas.repaint();
+									}
+								}
+							}
+						}
+					}
+
+					if (count % 2 == 0) {
+						if (white_count > 0) {
+							// 白棋
+							if (table[x_pos][y_pos] == "+") {
+								table[x_pos][y_pos] = "0";
+								map.put(count, x_pos * count_x + y_pos);
+								canvas.repaint();
+								count++;
+								white_count--;
+								white_tf.setText(String.valueOf(white_count));
+							}
+						} else {
+							// 棋子移动
+							if (table[x_pos][y_pos] == "0") {
+								list_w.add(x_pos * count_x + y_pos);
+							}
+
+							// 集合的长度
+							int length = list_w.size();
+							System.out.println(length);
+							// 对棋子遍历
+							if (length > 0) {
+								if (table[x_pos][y_pos] == "+") {
+									int x = list_w.get(length - 1) / count_x;
+									int y = list_w.get(length - 1) % count_x;
+									if (((x == x_pos) && (y - 1 == y_pos))
+											|| ((x == x_pos) && (y + 1 == y_pos))
+											|| ((x - 1 == x_pos) && (y == y_pos))
+											|| ((x + 1 == x_pos) && (y == y_pos))) {
+										table[x_pos][y_pos] = "0";
+										table[x][y] = "+";
+										count++;
+										canvas.repaint();
+									}
+								}
+							}
+						}
+					}
+
+					canvas.win();
+					// 棋子的坐标
+					int x = locate / count_x;
+					int y = locate % count_y;
+
+					// 白棋连成五个
+					if (white_flag && winForm == "one") {
+						for (int i = 0; i < 5; i++) {
+							table[x][y + i] = "+";
+						}
+						winForm = null;
+						canvas.repaint();
+						white_flag = false;
+						white_count += 5;
+						white_tf.setText(String.valueOf(white_count));
+						change_white = true;
+					} else if (white_flag && winForm == "two") {
+						for (int i = 0; i < 5; i++) {
+							table[x + i][y + i] = "+";
+						}
+						white_flag = false;
+						winForm = null;
+						canvas.repaint();
+						white_count += 5;
+						white_tf.setText(String.valueOf(white_count));
+						change_white = true;
+					} else if (white_flag && winForm == "three") {
+						for (int i = 0; i < 5; i++) {
+							table[x + i][y] = "+";
+						}
+						white_flag = false;
+						winForm = null;
+						canvas.repaint();
+						white_count += 5;
+						white_tf.setText(String.valueOf(white_count));
+						change_white = true;
+					} else if (white_flag && winForm == "four") {
+						for (int i = 0; i < 5; i++) {
+							table[x + i][y - i] = "+";
+						}
+						white_flag = false;
+						winForm = null;
+						canvas.repaint();
+						white_count += 5;
+						white_tf.setText(String.valueOf(white_count));
+						change_white = true;
+					}
+
+					// 黑棋连成五个
+					if (black_flag && winForm == "one") {
+						for (int i = 0; i < 5; i++) {
+							table[x][y + i] = "+";
+						}
+						for(Map.Entry<Integer, Integer> entry : map.entrySet()){
+							for(int j=0;j<5;j++){
+								if(locate == entry.getValue()+j){
+									map.remove(entry.getKey());
+								}
+							}
+						}
+						black_flag = false;
+						winForm = null;
+						canvas.repaint();
+						black_count += 5;
+						black_tf.setText(String.valueOf(black_count));
+						change_black = true;
+					} else if (black_flag && winForm == "two") {
+						for (int i = 0; i < 5; i++) {
+							table[x + i][y + i] = "+";
+						}
+						black_flag = false;
+						winForm = null;
+						canvas.repaint();
+						black_count += 5;
+						black_tf.setText(String.valueOf(black_count));
+						change_black = true;
+					} else if (black_flag && winForm == "three") {
+						for (int i = 0; i < 5; i++) {
+							table[x + i][y] = "+";
+						}
+						black_flag = false;
+						winForm = null;
+						canvas.repaint();
+						black_count += 5;
+						black_tf.setText(String.valueOf(black_count));
+						change_black = true;
+					} else if (black_flag && winForm == "four") {
+
+						for (int i = 0; i < 5; i++) {
+							table[x + i][y - i] = "+";
+						}
+						black_flag = false;
+						winForm = null;
+						canvas.repaint();
+						black_count += 5;
+						black_tf.setText(String.valueOf(black_count));
+						change_black = true;
+					}
+
+					// 白棋 吃对方的棋
+					if (change_white) {
+						// 点击的数组的坐标
+						x_pos = (int) ((e.getX() + offset) / chess_size);
+						y_pos = (int) ((e.getY() + offset) / chess_size);
+						if (table[x_pos][y_pos] == "1") {
+							table[x_pos][y_pos] = "0";
+							change_white = false;
+							white_count--;
+							canvas.repaint();
+							white_tf.setText(String.valueOf(white_count));
+						}
+					}
+					// 黑棋 吃对方的棋
+					if (change_black) {
+						// 点击的数组的坐标
+						x_pos = (int) ((e.getX() + offset) / chess_size);
+						y_pos = (int) ((e.getY() + offset) / chess_size);
+						if (table[x_pos][y_pos] == "0") {
+							table[x_pos][y_pos] = "1";
+							change_black = false;
+							black_count--;
+							canvas.repaint();
+							black_tf.setText(String.valueOf(black_count));
+						}
+					}
+
+					// 胜利的提示
+					if (white_count == 0 || black_count == 0) {
+						canvas.win3();
+						if (w_w) {
+							win_d.setVisible(true);
+							label1.setFont(new Font("宋体", Font.BOLD, 20));
+							label1.setText("  白棋胜！");
+							win_d.add(label1);
+							win_d.setModal(true);
+							w_w = false;
+						}
+						if (b_w) {
+							win_d.setVisible(true);
+							label1.setFont(new Font("宋体", Font.BOLD, 20));
+							label1.setText("  黑棋胜！");
+							win_d.add(label1);
+							win_d.setModal(true);
+							b_w = false;
+						}
+					}
+
+				}
+			}
+
+			private void draw() {
+				for (Map.Entry<Integer, Integer> entry : map.entrySet()) {
+					if (entry.getKey() % 2 == 0) {
+						x_pos = entry.getValue() / count_x;
+						y_pos = entry.getValue() % count_x;
+						table[x_pos][y_pos] = "0";
+					} else {
+						x_pos = entry.getValue() / count_x;
+						y_pos = entry.getValue() % count_x;
+						table[x_pos][y_pos] = "1";
+					}
+				}
+				canvas.repaint();
+			}
+
+			private void init() {
+				// 重新初始化棋盘
+				for (int i = 0; i < table.length; i++) {
+					for (int j = 0; j < table[i].length; j++) {
+						table[i][j] = "+";
+					}
+				}
+				canvas.repaint();
+			}
+
+			@Override
+			public void mouseExited(MouseEvent e) {
+				selectedx = -1;
+				selectedy = -1;
+			}
+		});
+
+		frame.pack();
+
+		frame.addWindowListener(new WindowAdapter() {
+			@Override
+			public void windowClosing(WindowEvent e) {
+				timer.stop();
+				System.exit(0);
+			}
+		});
+		frame.setVisible(true);
+	}
+
+	// 画棋盘
+	private void drawTable() {
+		// 线的颜色
+		grap.setColor(Color.BLACK);
+		// 画棋盘
+		int x1 = 0;
+		int y1 = 0;
+		int x2 = 0;
+		int y2 = 0;
+		// 画横线
+		for (int i = 0; i < 20; i++) {
+			grap.drawLine(0, y1, board_width, y2);
+			y1 = y1 + 40;
+			y2 = y2 + 40;
+		}
+		// 画竖线
+		for (int i = 0; i < 20; i++) {
+			grap.drawLine(x1, 0, x2, board_height);
+			x1 = x1 + 40;
+			x2 = x2 + 40;
+		}
+		// 对棋盘赋值为“+”
+		for (int i = 0; i < table.length; i++) {
+			for (int j = 0; j < table[0].length; j++) {
+				table[i][j] = "+";
+			}
+		}
+	}
+
+	public static void main(String[] args) throws Exception {
+		new FiveChess().run();
+	}
+}
